@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Instagram Feed Widget</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
+  .wrap { max-width: 935px; margin: 0 auto; padding: 10px; }
+  .bar { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  .mini { width:28px; height:28px; border:1px solid #e5e7eb; border-radius:8px; display:grid; place-items:center; cursor:pointer; background:#fff; }
+  .status { font-size:12px; color:#666; }
+  .grid { display:grid; grid-template-columns: repeat(3, 1fr); gap: 2px; }
+  @media (min-width:736px){ .grid { gap: 1px; } }
+  .tile { aspect-ratio:1/1; overflow:hidden; background:#fafafa; }
+  .tile img { width:100%; height:100%; object-fit:cover; display:block; }
+  .hint { font-size:13px; color:#9ca3af; margin-top:10px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="bar">
+    <button id="refresh" class="mini" title="Refresh" aria-label="Refresh">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none">
+        <path d="M20 12a8 8 0 10-2.34 5.66M20 12V7m0 5h-5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+    <span id="status" class="status">Ready</span>
+  </div>
+  <div id="grid" class="grid"></div>
+  <div class="hint">If nothing shows, open <code>/api/posts</code> on your site to check data.</div>
+</div>
+<script>
+const REMOTE_JSON_URL = "/api/posts";
+const grid = document.getElementById("grid");
+const statusEl = document.getElementById("status");
+const refresh = document.getElementById("refresh");
+
+async function load(){
+  statusEl.textContent = "Refreshing…";
+  grid.innerHTML = "";
+  try{
+    const res = await fetch(REMOTE_JSON_URL + "?t=" + Date.now(), { cache: "no-store" });
+    const data = await res.json();
+    const posts = Array.isArray(data.posts) ? data.posts : [];
+    posts.forEach(p => {
+      const a = document.createElement("a");
+      a.href = p.link || data.profileUrl || "#";
+      a.target = "_blank"; a.rel = "noopener";
+      const tile = document.createElement("div");
+      tile.className = "tile";
+      const img = document.createElement("img");
+      img.src = p.image;
+      img.alt = p.title || "Post";
+      tile.appendChild(img);
+      a.appendChild(tile);
+      grid.appendChild(a);
+    });
+    if(posts.length === 0){
+      const note = document.createElement("div");
+      note.className = "hint";
+      note.textContent = "No posts returned. Make sure your Notion DB has at least one row with an Image and Link, and your env vars are set.";
+      grid.after(note);
+    }
+    statusEl.textContent = "Last refreshed " + new Date().toLocaleString();
+  }catch(e){
+    statusEl.textContent = "Failed to load";
+  }
+}
+refresh.addEventListener("click", load);
+load();
+</script>
+</body>
+</html>
